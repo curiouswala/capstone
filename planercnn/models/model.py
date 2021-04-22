@@ -19,7 +19,7 @@ import torch.optim as optim
 import torch.utils.data
 from torch.autograd import Variable
 
-import planercnn.utils
+import planercnn.utils as utils
 # from nms.nms_wrapper import nms
 from torchvision.ops import nms
 
