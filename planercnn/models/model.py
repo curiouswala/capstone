@@ -19,17 +19,17 @@ import torch.optim as optim
 import torch.utils.data
 from torch.autograd import Variable
 
-import utils
+from planercnn import utils
 # from nms.nms_wrapper import nms
 from torchvision.ops import nms
 
-from roi_align import RoIAlign      # RoIAlign module
+# from roi_align import RoIAlign      # RoIAlign module
 from roi_align import CropAndResize as CropAndResizeFunction # crop_and_resize module
 # from roialign.roi_align.crop_and_resize import CropAndResizeFunction
 
 import cv2
-from models.modules import *
-from utils import *
+from planercnn.models.modules import *
+from planercnn.utils import *
 
 ############################################################
 #  Pytorch Utility Functions
