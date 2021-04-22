@@ -6,10 +6,7 @@ Licensed under the CC BY-NC-SA 4.0 license
 
 import argparse
 
-def parse_args():
-    """
-    Parse input arguments
-    """
+def get_parser():
     parser = argparse.ArgumentParser(description='CornerNet')
     parser.add_argument('--gpu', dest='gpu',
                         help='gpu',
@@ -183,6 +180,14 @@ def parse_args():
     parser.add_argument('--methods', dest='methods',
                         help='evaluation methods',
                         default='b', type=str)
+
+    return parser
+
+def parse_args():
+    """
+    Parse input arguments
+    """
+    parser = get_parser()
     
     args = parser.parse_args()
     return args
