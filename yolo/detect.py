@@ -1,9 +1,9 @@
 import argparse
 from sys import platform
 
-from models import *  # set ONNX_EXPORT in models.py
-from utils.datasets import *
-from utils.utils import *
+from yolo.yolo_decoder import *  # set ONNX_EXPORT in models.py
+from yolo.utils.datasets import *
+from yolo.utils.utils import *
 
 
 def detect(save_img=False):
