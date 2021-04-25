@@ -227,13 +227,14 @@ class Darknet(nn.Module):
         # Darknet Header https://github.com/AlexeyAB/darknet/issues/2914#issuecomment-496675346
         self.version = np.array([0, 2, 5], dtype=np.int32)  # (int32) version info: major, minor, revision
         self.seen = np.array([0], dtype=np.int64)  # (int64) number of images seen during training
-        self.info(verbose) if not ONNX_EXPORT else None  # print model description
+        #self.info(verbose) if not ONNX_EXPORT else None  # print model description
 
-    def forward(self, x, augment=False, verbose=False):
-
+    def forward(self,Yolo_75,Yolo_61,Yolo_36 , augment=False, verbose=False):
+        
         if not augment:
-            return self.forward_once(x)
+            return self.forward_once(Yolo_75,Yolo_61,Yolo_36)
         else:  # Augment images (inference and test only) https://github.com/ultralytics/yolov3/issues/931
+            x = Yolo_75
             img_size = x.shape[-2:]  # height, width
             s = [0.83, 0.67]  # scales
             y = []
@@ -242,7 +243,7 @@ class Darknet(nn.Module):
                                     torch_utils.scale_img(x, s[1], same_shape=False),  # scale
                                     )):
                 # cv2.imwrite('img%g.jpg' % i, 255 * xi[0].numpy().transpose((1, 2, 0))[:, :, ::-1])
-                y.append(self.forward_once(xi)[0])
+                y.append(self.forward_once(xi,Yolo_61,Yolo_36)[0])
 
             y[1][..., :4] /= s[0]  # scale
             y[1][..., 0] = img_size[1] - y[1][..., 0]  # flip lr
@@ -259,7 +260,8 @@ class Darknet(nn.Module):
             y = torch.cat(y, 1)
             return y, None
 
-    def forward_once(self, x, augment=False, verbose=False):
+    def forward_once(self, x,Yolo_61,Yolo_36, augment=False, verbose=False):
+        Yolo_75 = x.clone()
         img_size = x.shape[-2:]  # height, width
         yolo_out, out = [], []
         if verbose:
@@ -277,18 +279,37 @@ class Darknet(nn.Module):
 
         for i, module in enumerate(self.module_list):
             name = module.__class__.__name__
-            if name in ['WeightedFeatureFusion', 'FeatureConcat']:  # sum, concat
-                if verbose:
-                    l = [i - 1] + module.layers  # layers
-                    sh = [list(x.shape)] + [list(out[i].shape) for i in module.layers]  # shapes
-                    str = ' >> ' + ' + '.join(['layer %g %s' % x for x in zip(l, sh)])
-                x = module(x, out)  # WeightedFeatureFusion(), FeatureConcat()
-            elif name == 'YOLOLayer':
-                yolo_out.append(module(x, out))
-            else:  # run module directly, i.e. mtype = 'convolutional', 'upsample', 'maxpool', 'batchnorm2d' etc.
-                x = module(x)
+
+            ##Vignesh : Add block to run the model only for the concate layers
+            if i == 36:
+                x =  Yolo_36
+
+            elif i == 61:
+                x = Yolo_61
+                
+            elif i == 74:
+                x = Yolo_75
+                
+            if i > 74: ##Vignesh : Add block to run the model only for the layers post darknet
+                #print('i',i,'name :',name,' shape:',x.shape)
+                if name in ['WeightedFeatureFusion', 'FeatureConcat']:  # sum, concat
+                    if verbose:
+                        l = [i - 1] + module.layers  # layers
+                        sh = [list(x.shape)] + [list(out[i].shape) for i in module.layers]  # shapes
+                        str = ' >> ' + ' + '.join(['layer %g %s' % x for x in zip(l, sh)])
+                    x = module(x, out)  # WeightedFeatureFusion(), FeatureConcat()
+                elif name == 'YOLOLayer':
+
+                    yolo_out.append(module(x, out))
+
+                else:  # run module directly, i.e. mtype = 'convolutional', 'upsample', 'maxpool', 'batchnorm2d' etc.
+                    x = module(x)
+
+            #if not torch.isfinite(x).all():
+            #    print('i:',i,'name:',name,'x',x[0][0][0])
 
             out.append(x if self.routs[i] else [])
+            
             if verbose:
                 print('%g/%g %s -' % (i, len(self.module_list), name), list(x.shape), str)
                 str = ''
@@ -328,7 +349,6 @@ class Darknet(nn.Module):
 
     def info(self, verbose=False):
         torch_utils.model_info(self, verbose)
-
 
 def get_yolo_layers(model):
     return [i for i, m in enumerate(model.module_list) if m.__class__.__name__ == 'YOLOLayer']  # [89, 101, 113]
